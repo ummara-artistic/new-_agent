@@ -182,25 +182,28 @@ def fix_import_error():
     subprocess.run(["pip", "install", "--upgrade", "motor"], text=True, check=True)
     st.write("✅ `motor` package updated successfully!")
 
+import os
+import subprocess
+import sys
+import streamlit as st
+
 def run_project(repo_path, file_name=None, project_type=None, retry=False):
-    """Clone repo, install dependencies, run project, and persistently display output."""
+    """Clone repo, install dependencies, run project, and display final output."""
 
     # Step 1: Show cloning message
     st.info("🔄 Cloning repository...")
     # Simulate cloning (replace this with actual cloning logic)
-    st.success("✅ Repository cloned successfully.")
-
+    
     # Step 2: Install dependencies
     st.info("📦 Installing dependencies...")
     pip_install = subprocess.run(
         [sys.executable, "-m", "pip", "install", "-r", os.path.join(repo_path, "requirements.txt")],
         capture_output=True, text=True
     )
-    
+
     if pip_install.returncode != 0:
         st.error(f"❌ Dependency installation failed:\n{pip_install.stderr}")
         return
-    st.success("✅ Dependencies installed successfully.")
 
     # Step 3: Detect executable file
     if not file_name or not project_type:
@@ -215,30 +218,20 @@ def run_project(repo_path, file_name=None, project_type=None, retry=False):
     command = [sys.executable, os.path.join(repo_path, file_name)]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    output_text = ""  # Store all output for persistent display
-    output_window = st.empty()  # Create a placeholder for live output
+    output_text = ""  # Store all output
+    output_window = st.empty()  # Placeholder for output
 
     # Stream real-time output
     for line in process.stdout:
         output_text += line
-        output_window.text_area("🔍 Live Output:", output_text, height=300)  # Display all output
 
     stderr_output = process.stderr.read()
-    
     if stderr_output:
         output_text += f"\n⚠️ Execution Error:\n{stderr_output}"
-        output_window.text_area("🔍 Live Output:", output_text, height=300)
-        st.error("❌ Execution encountered an error.")
-        
-        # Auto-fix ImportError for `asyncio.coroutine`
-        if "ImportError: cannot import name 'coroutine' from 'asyncio'" in stderr_output and not retry:
-            fix_import_error()
-            st.info("♻️ Retrying execution...")
-            return run_project(repo_path, file_name, project_type, retry=True)  # Retry once
 
-    # Ensure the final output remains visible before success message
+    # Display final output
     output_window.text_area("🔍 Final Output:", output_text, height=300)
-    st.success("✅ Execution completed successfully!")  # Show success message
+
 
 
 
