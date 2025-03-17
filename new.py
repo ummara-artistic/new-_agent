@@ -182,11 +182,6 @@ def fix_import_error():
     subprocess.run(["pip", "install", "--upgrade", "motor"], text=True, check=True)
     st.write("✅ `motor` package updated successfully!")
 
-import os
-import subprocess
-import sys
-import streamlit as st
-
 def run_project(repo_path, file_name=None, project_type=None, retry=False):
     """Run the detected project file, fix errors if necessary, and display output persistently."""
     
@@ -224,8 +219,8 @@ def run_project(repo_path, file_name=None, project_type=None, retry=False):
             return run_project(repo_path, file_name, project_type, retry=True)  # Retry once
 
     # Ensure the final output remains visible before success message
-    output_window.text_area("🔍 Final Output:", output_text, height=300)
-    st.success("✅ Execution completed successfully!")  # Show success message at the end
+    # Display the output without success message
+    st.text_area("🔍 Final Output:", output_text, height=300, key="final_output")
 
 
 
@@ -655,7 +650,7 @@ def main():
                                 install_dependencies(repo_path)
                             with st.spinner("🚀 Running project..."):
                                 run_project(repo_path)
-                            response = None
+                            response = "✅ Project executed successfully."
                         else:
                             response = "⚠️ No valid execution command found."
                     else:
