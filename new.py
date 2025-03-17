@@ -637,26 +637,26 @@ def main():
                 response = "Invalid email format or missing message."
 
         elif user_input.lower().startswith("execute this "):
-            github_url = user_input[len("execute this "):].strip()
-            if github_url.startswith("https://github.com/") and github_url.endswith(".git"):
-                with st.spinner("⏳ Cloning repository..."):
-                    repo_name = clone_repo(github_url)
-                    if repo_name:
-                        with st.spinner("🔍 Detecting project files..."):
-                            repo_path = os.path.abspath(repo_name)
-                            file_name, project_type = detect_executable(repo_path)
-                        if file_name:
-                            with st.spinner("⚙️ Installing dependencies..."):
-                                install_dependencies(repo_path)
-                            with st.spinner("🚀 Running project..."):
-                                run_project(repo_path)
-                            response = "✅ Project executed successfully."
-                        else:
-                            response = "⚠️ No valid execution command found."
-                    else:
-                        response = "❌ Error cloning repository."
+    github_url = user_input[len("execute this "):].strip()
+    if github_url.startswith("https://github.com/") and github_url.endswith(".git"):
+        with st.spinner("⏳ Cloning repository..."):
+            repo_name = clone_repo(github_url)
+        if repo_name:
+            with st.spinner("🔍 Detecting project files..."):
+                repo_path = os.path.abspath(repo_name)
+                file_name, project_type = detect_executable(repo_path)
+            if file_name:
+                with st.spinner("⚙️ Installing dependencies..."):
+                    install_dependencies(repo_path)
+                with st.spinner("🚀 Running project..."):
+                    run_project(repo_path)
             else:
-                response = "⚠️ Invalid GitHub URL."
+                st.error("⚠️ No valid execution command found.")
+        else:
+            st.error("❌ Error cloning repository.")
+    else:
+        st.error("⚠️ Invalid GitHub URL.")
+
 
         elif user_input.lower().startswith("download this "):
             video_url = user_input[len("download this "):].strip()
