@@ -7,7 +7,7 @@ sounddevice
 numpy
 scipy
 beautifulsoup4
-moviepy
+moviepy==1.0.3
 requests
 pypdf2
 google-api-python-client
