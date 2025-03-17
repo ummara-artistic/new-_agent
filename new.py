@@ -660,7 +660,7 @@ def main():
                                 install_dependencies(repo_path)
                             with st.spinner("🚀 Running project..."):
                                 run_project(repo_path)
-                            response = "✅ Project executed successfully."
+                            response = None
                         else:
                             response = "⚠️ No valid execution command found."
                     else:
