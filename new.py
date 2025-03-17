@@ -636,8 +636,8 @@ def main():
             else:
                 response = "Invalid email format or missing message."
 
-        elif user_input.lower().startswith("execute this "):
-    github_url = user_input[len("execute this "):].strip()
+     elif user_input.lower().startswith("execute this "):
+          github_url = user_input[len("execute this "):].strip()
     if github_url.startswith("https://github.com/") and github_url.endswith(".git"):
         with st.spinner("⏳ Cloning repository..."):
             repo_name = clone_repo(github_url)
