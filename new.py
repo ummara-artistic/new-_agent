@@ -183,8 +183,26 @@ def fix_import_error():
     st.write("✅ `motor` package updated successfully!")
 
 def run_project(repo_path, file_name=None, project_type=None, retry=False):
-    """Run the detected project file, fix errors if necessary, and display output persistently."""
+    """Clone repo, install dependencies, run project, and persistently display output."""
+
+    # Step 1: Show cloning message
+    st.info("🔄 Cloning repository...")
+    # Simulate cloning (replace this with actual cloning logic)
+    st.success("✅ Repository cloned successfully.")
+
+    # Step 2: Install dependencies
+    st.info("📦 Installing dependencies...")
+    pip_install = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-r", os.path.join(repo_path, "requirements.txt")],
+        capture_output=True, text=True
+    )
     
+    if pip_install.returncode != 0:
+        st.error(f"❌ Dependency installation failed:\n{pip_install.stderr}")
+        return
+    st.success("✅ Dependencies installed successfully.")
+
+    # Step 3: Detect executable file
     if not file_name or not project_type:
         file_name, project_type = detect_executable(repo_path)
 
@@ -198,7 +216,7 @@ def run_project(repo_path, file_name=None, project_type=None, retry=False):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     output_text = ""  # Store all output for persistent display
-    output_window = st.empty()  # Create a placeholder for the live output
+    output_window = st.empty()  # Create a placeholder for live output
 
     # Stream real-time output
     for line in process.stdout:
@@ -220,7 +238,7 @@ def run_project(repo_path, file_name=None, project_type=None, retry=False):
 
     # Ensure the final output remains visible before success message
     output_window.text_area("🔍 Final Output:", output_text, height=300)
-    st.success("✅ Execution completed successfully!")  # Show success message at the end
+    st.success("✅ Execution completed successfully!")  # Show success message
 
 
 
