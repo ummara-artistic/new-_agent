@@ -12,3 +12,5 @@ requests
 pypdf2
 google-api-python-client
 google-auth
+imageio[ffmpeg]
+decorator
