@@ -15,6 +15,4 @@ google-auth
 imageio[ffmpeg]
 decorator
 python-dotenv
-portaudio
-sounddevice
 pyaudio
