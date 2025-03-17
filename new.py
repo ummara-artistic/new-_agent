@@ -5,14 +5,57 @@ import subprocess
 import shutil
 import sys
 import yt_dlp
+import streamlit as st
+import speech_recognition as sr
+from datetime import datetime
+from pydub import AudioSegment
+import tempfile
+import sounddevice as sd
+import numpy as np
+import tempfile
+import os
+import scipy.io.wavfile as wav
+
+from bs4 import BeautifulSoup
+import openai
+import os
+import moviepy.editor as mp
+from pydub import AudioSegment
+import datetime
+import streamlit as st
+import requests
+from PyPDF2 import PdfReader
+import json
+import os
+import streamlit as st
+from googleapiclient.discovery import build
+from datetime import datetime, timedelta
+from google.oauth2 import service_account
+import datetime
+import os
+import shutil
+import subprocess
+import sys
+import streamlit as st
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import streamlit as st
+import os
+
+# Function to send email
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 
 # Set OpenAI API Key (Replace with your key)
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-openai.api_key = api_key
+
+openai.api_key = "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"
 
 
 # Create a directory for downloads
@@ -68,19 +111,11 @@ def download_youtube_video(url):
         return error_msg
 
 
-import os
-import shutil
-import subprocess
-import sys
-import streamlit as st
+
 
 if "chat_log" not in st.session_state:
     st.session_state.chat_log = []
-import os
-import subprocess
-import requests
-import sys
-import streamlit as st
+
 
 def get_python_files_from_github(repo_url):
     """Fetch the list of .py files from the GitHub repo using GitHub API."""
@@ -188,9 +223,6 @@ def run_project(repo_path, file_name=None, project_type=None, retry=False):
     st.success("✅ Execution completed successfully!")  # Show success message at the end
 
 
-import streamlit as st
-import openai
-import os
 
 # Function to generate the dashboard code based on the user input (e.g., a finance dashboard)
 def generate_dashboard_code(description):
@@ -237,16 +269,7 @@ def generate_dashboard_image(description, code_snippet):
         return f"❌ Error generating dashboard image: {str(e)}"
 
 
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import streamlit as st
-import os
 
-# Function to send email
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 def send_email(to_email, subject, body):
     from_email = "ummarakhan60@gmail.com"  # Replace with your email
@@ -271,14 +294,6 @@ def send_email(to_email, subject, body):
     except Exception as e:
         return f"Error: {str(e)}"
         
-import datetime
-import json
-import os
-import streamlit as st
-from googleapiclient.discovery import build
-from datetime import datetime, timedelta
-from google.oauth2 import service_account
-import datetime
 
 
 # Path to the service account JSON file
@@ -328,16 +343,11 @@ def schedule_event(event_details):
 
 
 
-from bs4 import BeautifulSoup
 
 
 
 
 
-
-import streamlit as st
-import requests
-from PyPDF2 import PdfReader
 
 def extract_text_from_url(url):
     """Fetch and extract text content from a given URL."""
@@ -383,11 +393,7 @@ def summarize_document(url=None, file_path=None):
     return "❌ Unable to extract meaningful text."
 
 
-import streamlit as st
-import openai
-import os
-import moviepy.editor as mp
-from pydub import AudioSegment
+
 
 displayed_messages =[]
 
@@ -426,16 +432,7 @@ def transcribe_audio(file_path):
     except Exception as e:
         return f"❌ Error transcribing: {str(e)}"
 
-import streamlit as st
-import os
-import datetime
 
-
-
-import streamlit as st
-import json
-import os
-from datetime import datetime
 
 CHAT_LOG_FILE = "chat_logs.txt"
 
@@ -457,15 +454,6 @@ def load_chat_logs():
 
 
 
-import speech_recognition as sr
-from datetime import datetime
-from pydub import AudioSegment
-import tempfile
-import sounddevice as sd
-import numpy as np
-import tempfile
-import os
-import scipy.io.wavfile as wav
 
 def transcribe_audio_openai(file_path):
     """Transcribes audio using OpenAI's Whisper API."""
