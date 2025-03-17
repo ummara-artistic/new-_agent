@@ -601,117 +601,117 @@ def main():
 
 
     # User input
-    
+    user_input = st.chat_input("📝 Type your command:")
 
-user_input = st.chat_input("📝 Type your command:")
+    if user_input:
+        # Store user message and display instantly
+        st.session_state["messages"].append({"role": "user", "text": user_input})
+        st.session_state["chat_logs"].append(st.session_state["messages"].copy())
+       
 
-if user_input:
-    # Store user message and display instantly
-    st.session_state["messages"].append({"role": "user", "text": user_input})
-    st.session_state["chat_logs"].append(st.session_state["messages"].copy())
-
-    response = ""  # Default response
-
-    # Transcribe Audio
-    if user_input.lower().startswith("transcribe this"):
-        file_path = st.session_state.get("last_uploaded_file")
-        if file_path:
-            if file_path.endswith((".mp4", ".mov", ".avi", ".mpeg4")):
-                st.info("🔄 Extracting audio from video...")
-                file_path = extract_audio(file_path)  # Convert video to audio
-            if file_path and os.path.exists(file_path):
-                response = transcribe_audio(file_path)
-        else:
-            st.error("⚠️ No file uploaded. Please upload an audio/video file first.")
-
-    # Send Email
-    elif user_input.lower().startswith("send msg to "):
-        email_part = user_input[len("send msg to "):].strip()
-        if "@" in email_part and email_part.count(" ") > 0:
-            email_address, message = email_part.split(' ', 1)
-            with st.spinner(f"⏳ Sending message to {email_address}..."):
-                send_email(email_address, "Your Subject Here", message)
-        else:
-            st.error("⚠️ Invalid email format or missing message.")
-
-    # Execute GitHub Project
-    elif user_input.lower().startswith("execute this "):
-        github_url = user_input[len("execute this "):].strip()
-        if github_url.startswith("https://github.com/") and github_url.endswith(".git"):
-            with st.spinner("⏳ Cloning repository..."):
-                repo_name = clone_repo(github_url)
-            if repo_name:
-                with st.spinner("🔍 Detecting project files..."):
-                    repo_path = os.path.abspath(repo_name)
-                    file_name, project_type = detect_executable(repo_path)
-                if file_name:
-                    with st.spinner("⚙️ Installing dependencies..."):
-                        install_dependencies(repo_path)
-                    with st.spinner("🚀 Running project..."):
-                        run_project(repo_path)
+      
+        # Process user command
+        response = ""
+        if user_input.lower().startswith("transcribe this"):
+            file_path = st.session_state.get("last_uploaded_file")
+            if file_path:
+                if file_path.endswith((".mp4", ".mov", ".avi", ".mpeg4")):
+                    st.info("🔄 Extracting audio from video...")
+                    file_path = extract_audio(file_path)  # Convert video to audio
+                
+                if file_path and os.path.exists(file_path):
+                    response = transcribe_audio(file_path)
                 else:
-                    st.error("⚠️ No valid execution command found.")
+                    response = "⚠️ No valid file found after extraction."
             else:
-                st.error("❌ Error cloning repository.")
-        else:
-            st.error("⚠️ Invalid GitHub URL.")
+                response = "⚠️ No file uploaded. Please upload an audio/video file first."
 
-    # Download YouTube Video
-    elif user_input.lower().startswith("download this "):
-        video_url = user_input[len("download this "):].strip()
-        with st.spinner("⏳ Downloading..."):
-            download_youtube_video(video_url)
-
-    # Create Dashboard
-    elif user_input.lower().startswith("create dashboard"):
-        dashboard_description = user_input[len("create dashboard"):].strip() or "sales data"
-        with st.spinner("⏳ Generating dashboard code..."):
-            code_snippet = generate_dashboard_code(dashboard_description)
-        if code_snippet:
-            with st.spinner("⏳ Generating dashboard image..."):
-                dashboard_image_url = generate_dashboard_image(dashboard_description, code_snippet)
-                st.image(dashboard_image_url, caption="Generated Dashboard Image", use_column_width=True)
-                st.subheader("📚 Generated Code")
-                st.code(code_snippet, language="python")
-        else:
-            st.error("❌ Error generating dashboard code.")
-
-    # Schedule Event
-    elif user_input.lower().startswith("schedule this"):
-        event_details = {
-            "title": "Meeting with team",
-            "start_time": datetime.now() + timedelta(hours=3),
-            "end_time": datetime.now() + timedelta(hours=4),
-            "location": "Zoom",
-            "description": "Discussing project updates."
-        }
-        schedule_event(event_details)
-
-    # Summarize Content
-    elif user_input.lower().startswith("summarize this"):
-        content_to_summarize = user_input[len("summarize this"):].strip()
-        if content_to_summarize.startswith("http"):
-            response = summarize_document(url=content_to_summarize)
-        elif len(content_to_summarize) > 0:
-            response = summarize_document(input_text=content_to_summarize)
-        else:
-            uploaded_file = st.file_uploader("Choose a file to summarize", type=["txt", "pdf"])
-            if uploaded_file:
-                response = summarize_document(file=uploaded_file)
+        elif user_input.lower().startswith("send msg to "):
+            email_part = user_input[len("send msg to "):].strip()
+            if "@" in email_part and email_part.count(" ") > 0:
+                email_address, message = email_part.split(' ', 1)
+                with st.spinner(f"⏳ Sending message to {email_address}..."):
+                    response = send_email(email_address, "Your Subject Here", message)
             else:
-                st.error("⚠️ No content provided to summarize.")
+                response = "Invalid email format or missing message."
 
-    # Default: Handle General Queries
-    else:
-        with st.spinner("⏳ Thinking..."):
-            response = research_query(user_input)
+        elif user_input.lower().startswith("execute this "):
+            github_url = user_input[len("execute this "):].strip()
+            if github_url.startswith("https://github.com/") and github_url.endswith(".git"):
+                with st.spinner("⏳ Cloning repository..."):
+                    repo_name = clone_repo(github_url)
+                    if repo_name:
+                        with st.spinner("🔍 Detecting project files..."):
+                            repo_path = os.path.abspath(repo_name)
+                            file_name, project_type = detect_executable(repo_path)
+                        if file_name:
+                            with st.spinner("⚙️ Installing dependencies..."):
+                                install_dependencies(repo_path)
+                            with st.spinner("🚀 Running project..."):
+                                run_project(repo_path)
+                            response = "✅ Project executed successfully."
+                        else:
+                            response = "⚠️ No valid execution command found."
+                    else:
+                        response = "❌ Error cloning repository."
+            else:
+                response = "⚠️ Invalid GitHub URL."
 
-    # Store AI response
-    if response:
-        st.session_state["messages"].append({"role": "ai", "text": response})
+        elif user_input.lower().startswith("download this "):
+            video_url = user_input[len("download this "):].strip()
+            with st.spinner("⏳ Downloading..."):
+                response = download_youtube_video(video_url)
 
-    # Rerun the app to update UI instantly
-    st.rerun()
+        elif user_input.lower().startswith("create dashboard"):
+            dashboard_description = user_input[len("create dashboard"):].strip() or "sales data"
+            with st.spinner("⏳ Generating dashboard code..."):
+                code_snippet = generate_dashboard_code(dashboard_description)
+            if code_snippet:
+                with st.spinner("⏳ Generating dashboard image..."):
+                    dashboard_image_url = generate_dashboard_image(dashboard_description, code_snippet)
+                    st.image(dashboard_image_url, caption="Generated Dashboard Image", use_column_width=True)
+                    st.subheader("📚 Generated Code")
+                    st.code(code_snippet, language="python")
+                response = "✅ Dashboard generated successfully."
+            else:
+                response = "❌ Error generating dashboard code."
+
+        elif user_input.lower().startswith("schedule this"):
+            event_details = {
+    "title": "Meeting with team",
+    "start_time": datetime.now() + timedelta(hours=3),
+    "end_time": datetime.now() + timedelta(hours=4),
+    "location": "Zoom",
+    "description": "Discussing project updates."
+}
+
+            response = schedule_event(event_details)
+
+        elif user_input.lower().startswith("summarize this"):
+            content_to_summarize = user_input[len("summarize this"):].strip()
+            
+            if content_to_summarize.startswith("http"):
+                response = summarize_document(url=content_to_summarize)
+            elif len(content_to_summarize) > 0:
+                response = summarize_document(input_text=content_to_summarize)
+            else:
+                uploaded_file = st.file_uploader("Choose a file to summarize", type=["txt", "pdf"])
+                if uploaded_file:
+                    response = summarize_document(file=uploaded_file)
+                else:
+                    response = "⚠️ No content provided to summarize."
+
+        else:
+            with st.spinner("⏳ Thinking..."):
+                response = research_query(user_input)
+
+        # Store AI response
+        if response:
+            st.session_state["messages"].append({"role": "ai", "text": response})
+
+        # Rerun the app to update UI instantly
+        st.rerun()
 
 if __name__ == "__main__":
     main()
+
