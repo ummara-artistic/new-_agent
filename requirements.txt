@@ -15,4 +15,6 @@ google-auth
 imageio[ffmpeg]
 decorator
 python-dotenv
-pyaudio==1.0.3
+pip install pipwin
+pipwin install pyaudio
+
