@@ -55,7 +55,7 @@ import os
 
 load_dotenv()
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 
 # Create a directory for downloads
