@@ -55,7 +55,11 @@ import os
 
 load_dotenv()
 
-openai.api_key = "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"
+# Initialize session state variables if they don't exist
+if "chat_log" not in st.session_state:
+    st.session_state.chat_log = []
+
+
 
 
 # Create a directory for downloads
@@ -503,18 +507,52 @@ def record_and_transcribe(duration=5, samplerate=44100):
 
 
 
+# Main function
+def load_chat_logs():
+    if "chat_logs" not in st.session_state:
+        st.session_state["chat_logs"] = []
+
+# Main function
 def main():
     """Main Streamlit app."""
-    st.set_page_config(layout="wide")
-    st.title("🎙️ AI Transcription Assistant")
 
-    # Load chat history from file
-    if "chat_logs" not in st.session_state:
-        load_chat_logs()
+    # Ensure API key is stored globally
+    if "openai.key" not in st.session_state:
+        st.session_state["openai.key"] = None
 
-    st.sidebar.title("📜 Chat History")
+    st.sidebar.title("🔑 API & Settings")
+
+    # API Key Input (Always Visible)
+    openai_key = st.sidebar.text_input("🔐 OpenAI API Key", type="password")
+
+    # Save API key and set globally
+    if openai_key:
+        st.session_state["openai.key"] = openai_key
+        openai.api_key = openai_key  # ✅ Assign globally
+        st.sidebar.success("✅ OpenAI API Key saved!")
+
+    # Section: Optional Settings (Always Visible)
+    st.sidebar.subheader("⚙️ Optional Settings")
+
+    with st.sidebar.expander("📹 Zoom Integration (Optional)"):
+        st.session_state["zoom_id"] = st.text_input("Zoom ID")
+        st.session_state["zoom_client_id"] = st.text_input("Zoom Client ID")
+        st.session_state["zoom_client_secret"] = st.text_input("Zoom Client Secret", type="password")
+
+    with st.sidebar.expander("📧 Email Integration (Optional)"):
+        st.session_state["sender_email"] = st.text_input("Sender Email")
+        st.session_state["email_app_password"] = st.text_input("Email App Password", type="password")
+
+    # If no API key, show warning and STOP execution before displaying main UI
+    if not st.session_state["openai.key"]:
+        st.warning("⚠️ Please enter your OpenAI API Key to access the main app features.")
+        return  # Stop execution until API key is provided
+
+    # Load chat logs
+    load_chat_logs()
 
 
+    
     # Speech-to-Text Button
     if st.button("🎤 Click to Speak"):
         transcribed_text = record_and_transcribe()
@@ -636,7 +674,7 @@ def main():
                 response = "Invalid email format or missing message."
 
         elif user_input.lower().startswith("execute this "):
-            github_url = user_input[len("execute this "):].strip()
+            github_url = user_input[len("execute this "):].strip() 
             if github_url.startswith("https://github.com/") and github_url.endswith(".git"):
                 with st.spinner("⏳ Cloning repository..."):
                     repo_name = clone_repo(github_url)
