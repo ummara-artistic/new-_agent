@@ -152,9 +152,11 @@ def clone_repo(github_url):
         return None
 
 def install_dependencies(repo_path):
-    """Check and install dependencies if found."""
+    """Check and install dependencies for different project types."""
     python_requirements = os.path.join(repo_path, "requirements.txt")
     node_package = os.path.join(repo_path, "package.json")
+    dotnet_project = os.path.join(repo_path, "project.csproj")
+    sql_schema = os.path.join(repo_path, "schema.sql")
 
     if os.path.exists(python_requirements):
         st.write("📦 Installing Python dependencies...")
@@ -164,67 +166,134 @@ def install_dependencies(repo_path):
         st.write("📦 Installing Node.js dependencies...")
         subprocess.run(["npm", "install"], cwd=repo_path)
 
+    if os.path.exists(dotnet_project):
+        st.write("📦 Restoring .NET dependencies...")
+        subprocess.run(["dotnet", "restore"], cwd=repo_path)
+
+    if os.path.exists(sql_schema):
+        st.write("📦 SQL schema detected. Ensure you import it into your database.")
+
 def detect_executable(repo_path):
-    """Find the correct Python file to execute."""
-    python_files = [f for f in os.listdir(repo_path) if f.endswith(".py")]
-    
-    # Prioritize common entry points
-    entry_points = ["manage.py", "app.py", "main.py"]
-    for entry in entry_points:
+    """Detect the correct executable file based on project type."""
+    files = os.listdir(repo_path)
+
+    # Python
+    python_files = [f for f in files if f.endswith(".py")]
+    for entry in ["manage.py", "app.py", "main.py"]:
         if entry in python_files:
             return entry, "python"
-
-    # If there's only one Python file, run it
     if len(python_files) == 1:
         return python_files[0], "python"
 
+    # Node.js
+    if "server.js" in files:
+        return "server.js", "node"
+    if "index.js" in files:
+        return "index.js", "node"
+
+    # React.js
+    if "package.json" in files and os.path.isdir(os.path.join(repo_path, "src")):
+        return "react", "react"
+
+    # C
+    c_files = [f for f in files if f.endswith(".c")]
+    if len(c_files) == 1:
+        return c_files[0], "c"
+
+    # C++
+    cpp_files = [f for f in files if f.endswith(".cpp")]
+    if len(cpp_files) == 1:
+        return cpp_files[0], "cpp"
+
+    # C# (.NET)
+    cs_files = [f for f in files if f.endswith(".csproj")]
+    if len(cs_files) == 1:
+        return cs_files[0], "dotnet"
+
     return None, None  # No valid file detected
 
-def fix_import_error():
-    """Fix ImportError related to `asyncio.coroutine` by upgrading `motor`."""
-    st.write("⚠️ Fixing ImportError: Updating `motor` package...")
-    subprocess.run(["pip", "install", "--upgrade", "motor"], text=True, check=True)
-    st.write("✅ `motor` package updated successfully!")
+def compile_and_run_c_cpp(repo_path, file_name, lang):
+    """Compile and run C or C++ files."""
+    binary_name = "output.exe" if os.name == "nt" else "./output"
 
-def run_project(repo_path, file_name=None, project_type=None, retry=False):
-    """Run the detected project file, fix errors if necessary, and display output persistently."""
+    if lang == "c":
+        compile_cmd = ["gcc", os.path.join(repo_path, file_name), "-o", os.path.join(repo_path, binary_name)]
+    else:
+        compile_cmd = ["g++", os.path.join(repo_path, file_name), "-o", os.path.join(repo_path, binary_name)]
+
+    compile_process = subprocess.run(compile_cmd, capture_output=True, text=True)
+    
+    if compile_process.returncode == 0:
+        st.write(f"✅ {lang.upper()} file compiled successfully! Running it now...")
+        subprocess.run([os.path.join(repo_path, binary_name)], cwd=repo_path)
+    else:
+        st.write(f"❌ Compilation Error: {compile_process.stderr}")
+
+import streamlit as st
+import subprocess
+import os
+import sys
+
+def run_project(repo_path, file_name=None, project_type=None):
+    """Run the detected project file and persist output in the UI."""
     
     if not file_name or not project_type:
         file_name, project_type = detect_executable(repo_path)
 
     if not file_name:
-        st.error("⚠️ No executable file found (e.g., `manage.py`, `app.py`, `main.py`).")
+        st.error("⚠️ No executable file found.")
         return
 
-    st.info(f"🚀 Running `{file_name}`...")
+    st.info(f"🚀 Running `{file_name}` ({project_type})...")
 
-    command = [sys.executable, os.path.join(repo_path, file_name)]
+    # Determine the command based on project type
+    if project_type == "python":
+        command = [sys.executable, os.path.join(repo_path, file_name)]
+    elif project_type == "node":
+        command = ["node", os.path.join(repo_path, file_name)]
+    elif project_type == "c":
+        command = ["gcc", os.path.join(repo_path, file_name), "-o", "output"]  # Compile first
+    elif project_type == "cpp":
+        command = ["g++", os.path.join(repo_path, file_name), "-o", "output"]
+    elif project_type == "csharp":
+        command = ["dotnet", "run"]
+    else:
+        st.error("❌ Unsupported project type.")
+        return
+
+    # For compiled languages, execute the compiled binary
+    if project_type in ["c", "cpp"]:
+        subprocess.run(command, check=True)
+        command = ["./output"]  # Run compiled binary
+
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    output_text = ""  # Store all output for persistent display
-    output_window = st.empty()  # Create a placeholder for the live output
+    # Initialize session state for persistent output
+    if "output_text" not in st.session_state:
+        st.session_state.output_text = ""
 
-    # Stream real-time output
-    for line in process.stdout:
-        output_text += line
-        output_window.text_area("🔍 Live Output:", output_text, height=300)  # Display all output
+    output_window = st.empty()  # UI placeholder
 
+    # Read output in real-time and keep it visible
+    for line in iter(process.stdout.readline, ''):
+        st.session_state.output_text += line  # Append new output
+        output_window.text_area("🔍 Live Output:", st.session_state.output_text, height=400)  # Keep updating
+
+    # Capture and display errors
     stderr_output = process.stderr.read()
-    
     if stderr_output:
-        output_text += f"\n⚠️ Execution Error:\n{stderr_output}"
-        output_window.text_area("🔍 Live Output:", output_text, height=300)
+        st.session_state.output_text += f"\n⚠️ Execution Error:\n{stderr_output}"
         st.error("❌ Execution encountered an error.")
-        
-        # Auto-fix ImportError for `asyncio.coroutine`
-        if "ImportError: cannot import name 'coroutine' from 'asyncio'" in stderr_output and not retry:
-            fix_import_error()
-            st.info("♻️ Retrying execution...")
-            return run_project(repo_path, file_name, project_type, retry=True)  # Retry once
 
-    # Ensure the final output remains visible before success message
-    output_window.text_area("🔍 Final Output:", output_text, height=300)
-    st.success("✅ Execution completed successfully!")  # Show success message at the end
+    # Ensure final output remains visible
+    output_window.text_area("🔍 Final Output:", st.session_state.output_text, height=400)
+
+    if not stderr_output:
+        st.success("✅ Execution completed successfully!")
+
+# **Persistent Output on Reload**
+if "output_text" in st.session_state and st.session_state.output_text:
+    st.text_area("🔍 Previous Output:", st.session_state.output_text, height=400)
 
 
 
@@ -271,7 +340,6 @@ def generate_dashboard_image(description, code_snippet):
         return image_url
     except Exception as e:
         return f"❌ Error generating dashboard image: {str(e)}"
-
 
 
 
@@ -697,8 +765,15 @@ def main():
 
         elif user_input.lower().startswith("download this "):
             video_url = user_input[len("download this "):].strip()
+            downloading_msg = "⏳ Downloading video..."
+            st.session_state["messages"].append({"role": "ai", "text": downloading_msg})
             with st.spinner("⏳ Downloading..."):
-                response = download_youtube_video(video_url)
+                download_result = download_youtube_video(video_url)
+                # Update the UI once the video is downloaded
+                success_msg = "✅ Video downloaded successfully!"
+                st.session_state["messages"].append({"role": "ai", "text": success_msg})
+
+                st.success(success_msg)
 
         elif user_input.lower().startswith("create dashboard"):
             dashboard_description = user_input[len("create dashboard"):].strip() or "sales data"
@@ -752,4 +827,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
