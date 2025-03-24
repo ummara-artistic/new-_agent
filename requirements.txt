@@ -16,4 +16,9 @@ imageio[ffmpeg]
 decorator
 python-dotenv
 pyaudio==0.2.14
+timezonefinder
+geopy 
+pytz
+
+
 
