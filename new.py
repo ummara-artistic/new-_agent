@@ -1,4 +1,7 @@
 import openai
+from datetime import datetime
+from timezonefinder import TimezoneFinder
+import geopy.geocoders
 import streamlit as st
 import os
 import subprocess
@@ -11,6 +14,7 @@ from datetime import datetime
 from pydub import AudioSegment
 import tempfile
 import sounddevice as sd
+import webbrowser
 import numpy as np
 import tempfile
 import os
@@ -71,13 +75,59 @@ if "chat_log" not in st.session_state:
     st.session_state.chat_log = []
 
 
+import openai
+import streamlit as st
+import pytz
+from datetime import datetime
+from timezonefinder import TimezoneFinder
+import geopy.geocoders
+
+geolocator = geopy.geocoders.Nominatim(user_agent="timezone_finder")
+tf = TimezoneFinder()
+
+def get_current_time(location):
+    try:
+        # Get the latitude and longitude of the location
+        geo_info = geolocator.geocode(location)
+        if not geo_info:
+            return f"Sorry, I couldn't find the timezone for '{location}'."
+
+        # Get timezone from coordinates
+        timezone_str = tf.timezone_at(lng=geo_info.longitude, lat=geo_info.latitude)
+        if not timezone_str:
+            return f"Sorry, I couldn't determine the timezone for '{location}'."
+
+        # Get the current time in that timezone
+        timezone = pytz.timezone(timezone_str)
+        current_time = datetime.now(timezone)
+
+        # Format the time response
+        time_str = current_time.strftime('%Y-%m-%d %H:%M:%S %Z%z')
+        return f"The current time in {location.capitalize()} is {time_str}."
+
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
+
 def research_query(user_query):
-    """Fetch research-based responses from OpenAI's GPT model."""
+    """Fetch research-based responses from OpenAI's GPT model, with time zone support."""
     if not openai.api_key:
         st.error("❌ OpenAI API key is missing.")
         return
+    
+    # Ensure chat_log exists in session state
+    if "chat_log" not in st.session_state:
+        st.session_state.chat_log = []
 
     st.session_state.chat_log.append(("🧠 You", user_query))  # Log user query
+
+    # Check if user is asking about time in a specific place
+    if any(keyword in user_query.lower() for keyword in ["what time is it", "current time in"]):
+        location = user_query.split("in")[-1].strip()  # Extract location after "in"
+        if location:
+            answer = get_current_time(location)
+            st.session_state.chat_log.append(("⏰ AI", answer))  # Log AI response
+            st.write(answer)  # Display AI response in Streamlit
+            return answer
 
     try:
         response = openai.ChatCompletion.create(
@@ -87,34 +137,58 @@ def research_query(user_query):
         )
         answer = response["choices"][0]["message"]["content"]
         st.session_state.chat_log.append(("🤖 AI", answer))  # Log AI response
+        st.write(answer)  # Display AI response in Streamlit
         return answer
     except Exception as e:
         error_msg = f"❌ Error fetching research: {str(e)}"
         st.session_state.chat_log.append(("⚠️ Error", error_msg))
+        st.error(error_msg)  # Display error in Streamlit
         return error_msg
 
+import re
 
-def download_youtube_video(url):
-    """Download a YouTube video using yt_dlp."""
+
+def is_ffmpeg_installed():
+    """Check if ffmpeg is installed and accessible in PATH."""
+    return shutil.which("ffmpeg") is not None
+
+def extract_url(user_input):
+    """Extracts the URL from the input text if it matches the expected format."""
+    match = re.search(r"download this (https?://\S+)", user_input, re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def download_youtube_video(video_url):
     try:
+        if not is_ffmpeg_installed():
+            st.error("❌ Error: `ffmpeg` is not installed or not in PATH. Please install it.")
+            return
+
+        # Define temporary download directory in Streamlit Cloud
+        temp_dir = "downloads"
+        os.makedirs(temp_dir, exist_ok=True)
+
+        # yt-dlp options for downloading a single video
         ydl_opts = {
-            'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
-            'quiet': False,
-            'noplaylist': True,
+            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),  # Save as Title.mp4
+            'format': 'bestvideo+bestaudio/best',  # Best available quality
+            'merge_output_format': 'mp4',  # Save in MP4 format
+            'noplaylist': True,  # Ensure only the single video is downloaded
+            'quiet': False
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            info_dict = ydl.extract_info(video_url, download=True)
+            filename = ydl.prepare_filename(info_dict).replace(".webm", ".mp4")  # Adjust extension if needed
+        
+        st.success("✅ Download complete!")
+        
+        # Provide a download button for the user
+        with open(filename, "rb") as file:
+            st.download_button(label="📥 Click to Download", data=file, file_name=os.path.basename(filename), mime="video/mp4")
 
-        success_msg = f"✅ Video downloaded successfully in `{DOWNLOAD_DIR}`."
-        st.session_state.chat_log.append(("🎥 Download", success_msg))
-        return success_msg
     except Exception as e:
-        error_msg = f"❌ Error downloading video: {str(e)}"
-        st.session_state.chat_log.append(("⚠️ Download Error", error_msg))
-        return error_msg
-
-
+        st.error(f"❌ Error: {e}")
 
 
 if "chat_log" not in st.session_state:
@@ -347,24 +421,22 @@ def send_email(to_email, subject, body):
     from_email = "ummarakhan60@gmail.com"  # Replace with your email
     app_password = "horf ybfy fwsn czxr"  # Replace with your application-specific password
 
-    # Setting up the MIME
     msg = MIMEMultipart()
     msg['From'] = from_email
     msg['To'] = to_email
     msg['Subject'] = subject
     msg.attach(MIMEText(body, 'plain'))
 
-    # Establishing the connection with the SMTP server
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)  # You can use another SMTP server if needed
-        server.starttls()  # Secure the connection
-        server.login(from_email, app_password)  # Login using the app-specific password
-        text = msg.as_string()
-        server.sendmail(from_email, to_email, text)
-        server.quit()  # Logout from the server
-        return "Message sent successfully!"
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(from_email, app_password)
+        server.sendmail(from_email, to_email, msg.as_string())
+        server.quit()
+        return "✅ Message sent successfully!"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"❌ Error: {str(e)}"
+
         
 
 
@@ -372,53 +444,84 @@ def send_email(to_email, subject, body):
 load_dotenv()
 
 # Get service account file path from environment variable
-SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE")
+# Load the service account credentials
+import os
 
-# Authenticate using the service account
-def authenticate_google_account():
-    creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=['https://www.googleapis.com/auth/calendar']
-    )
-    return build('calendar', 'v3', credentials=creds)
+import os
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
-# Function to schedule an event
-def schedule_event(event_details):
-    service = authenticate_google_account()
+import os
+from dotenv import load_dotenv
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from dotenv import load_dotenv
+import os
+
+import streamlit as st
+import re
+from datetime import datetime, timedelta
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
+
+# Google Calendar API Setup
+# Google Calendar API Setup
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+# Load credentials properly
+CREDS = Credentials.from_service_account_file(os.path.join(BASE_DIR, "config", "D:\Ai-agent-main\Ai-agent-main\config\continual-works-430510-v1-e672c0aea3c1.json"), scopes=SCOPES)
+def schedule_event(summary, start_time):
+    """
+    Schedules an event in Google Calendar.
+    
+    :param summary: Event title
+    :param start_time: Datetime object for the start time
+    :return: Google Calendar event link
+    """
+    service = build("calendar", "v3", credentials=CREDS)
+    calendar_id = "primary"
+
+    end_time = start_time + timedelta(hours=1)  # Default duration: 1 hour
     event = {
-        'summary': event_details['title'],
-        'location': event_details.get('location', ''),
-        'description': event_details.get('description', ''),
-
-
-
-        'start': {
-            'dateTime': event_details['start_time'].isoformat(),
-            'timeZone': 'America/Los_Angeles',
-        },
-        'end': {
-            'dateTime': event_details['end_time'].isoformat(),
-            'timeZone': 'America/Los_Angeles',
-        },
+        "summary": summary,
+        "start": {"dateTime": start_time.isoformat(), "timeZone": "UTC"},
+        "end": {"dateTime": end_time.isoformat(), "timeZone": "UTC"},
     }
 
-    try:
-        event_result = service.events().insert(
-            calendarId='primary', body=event
-        ).execute()
+    event_result = service.events().insert(calendarId=calendar_id, body=event).execute()
+    return event_result.get("htmlLink")
 
-        print(f"✅ Event '{event_result['summary']}' added to Google Calendar on {event_result['start']['dateTime']}")
-        return f"✅ Event '{event_details['title']}' added successfully!"
-    except Exception as e:
-        print(f"❌ Error scheduling event: {str(e)}")
-        return f"❌ Error: {str(e)}"
+def extract_time_from_message(message):
+    """
+    Extracts time from a message like 'Schedule this meeting at 2 PM today'.
+    Returns a datetime object.
+    """
+    match = re.search(r"(\d{1,2})\s?(AM|PM|am|pm)?\s?(today|tomorrow)?", message, re.IGNORECASE)
+    
+    if match:
+        hour = int(match.group(1))
+        period = match.group(2)
+        day_modifier = match.group(3)
 
+        # Convert to 24-hour format
+        if period and period.lower() == "pm" and hour != 12:
+            hour += 12
+        if period and period.lower() == "am" and hour == 12:
+            hour = 0
 
+        # Determine the date
+        event_date = datetime.utcnow().date()
+        if day_modifier and day_modifier.lower() == "tomorrow":
+            event_date += timedelta(days=1)
 
+        event_time = datetime(event_date.year, event_date.month, event_date.day, hour, 0)
+        return event_time
 
-
-
-
+    return None
 
 
 def extract_text_from_url(url):
@@ -707,7 +810,7 @@ def main():
 
 
     # User input
-    user_input = st.chat_input("📝 Type your command:")
+    user_input = st.chat_input("📝 Type your command:",key = 'user_input')
 
     if user_input:
         # Store user message and display instantly
@@ -718,7 +821,37 @@ def main():
       
         # Process user command
         response = ""
-        if user_input.lower().startswith("transcribe this"):
+
+
+
+        if user_input.lower().startswith("schedule this"):
+         event_time = extract_time_from_message(user_input)
+
+        if event_time:
+            event_details = {
+                "summary": "Meeting",
+                "start_time": event_time
+            }
+            event_link = schedule_event(event_details["summary"], event_details["start_time"])
+            st.success(f"✅ Meeting scheduled successfully! [View in Google Calendar]({event_link})")
+        
+
+
+
+        elif user_input.lower().startswith("download this"):
+         video_url = extract_url(user_input)
+         if video_url:
+            download_youtube_video(video_url)
+            st.success(f"✅ Download complete! Check your Downloads folder.")
+
+
+
+
+         
+            
+      
+
+        elif user_input.lower().startswith("transcribe this"):
             file_path = st.session_state.get("last_uploaded_file")
             if file_path:
                 if file_path.endswith((".mp4", ".mov", ".avi", ".mpeg4")):
@@ -732,12 +865,22 @@ def main():
             else:
                 response = "⚠️ No file uploaded. Please upload an audio/video file first."
 
+
+    
+
+
+
+ 
+ 
+                
+
         elif user_input.lower().startswith("send msg to "):
             email_part = user_input[len("send msg to "):].strip()
             if "@" in email_part and email_part.count(" ") > 0:
                 email_address, message = email_part.split(' ', 1)
                 with st.spinner(f"⏳ Sending message to {email_address}..."):
                     response = send_email(email_address, "Your Subject Here", message)
+                    st.success(response)
             else:
                 response = "Invalid email format or missing message."
 
@@ -763,17 +906,12 @@ def main():
             else:
                 response = "⚠️ Invalid GitHub URL."
 
-        elif user_input.lower().startswith("download this "):
-            video_url = user_input[len("download this "):].strip()
-            downloading_msg = "⏳ Downloading video..."
-            st.session_state["messages"].append({"role": "ai", "text": downloading_msg})
-            with st.spinner("⏳ Downloading..."):
-                download_result = download_youtube_video(video_url)
-                # Update the UI once the video is downloaded
-                success_msg = "✅ Video downloaded successfully!"
-                st.session_state["messages"].append({"role": "ai", "text": success_msg})
+      
 
-                st.success(success_msg)
+
+            
+
+            
 
         elif user_input.lower().startswith("create dashboard"):
             dashboard_description = user_input[len("create dashboard"):].strip() or "sales data"
@@ -789,16 +927,13 @@ def main():
             else:
                 response = "❌ Error generating dashboard code."
 
-        elif user_input.lower().startswith("schedule this"):
-            event_details = {
-    "title": "Meeting with team",
-    "start_time": datetime.now() + timedelta(hours=3),
-    "end_time": datetime.now() + timedelta(hours=4),
-    "location": "Zoom",
-    "description": "Discussing project updates."
-}
 
-            response = schedule_event(event_details)
+
+
+      
+      
+
+         
 
         elif user_input.lower().startswith("summarize this"):
             content_to_summarize = user_input[len("summarize this"):].strip()
@@ -814,6 +949,18 @@ def main():
                 else:
                     response = "⚠️ No content provided to summarize."
 
+
+
+
+
+
+
+
+
+
+
+                    
+
         else:
             with st.spinner("⏳ Thinking..."):
                 response = research_query(user_input)
@@ -823,7 +970,7 @@ def main():
             st.session_state["messages"].append({"role": "ai", "text": response})
 
         # Rerun the app to update UI instantly
-        st.rerun()
+        
 
 if __name__ == "__main__":
     main()
