@@ -473,7 +473,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 # Load credentials properly
-CREDS = Credentials.from_service_account_file(os.path.join(BASE_DIR, "config", "D:\Ai-agent-main\Ai-agent-main\config\continual-works-430510-v1-e672c0aea3c1.json"), scopes=SCOPES)
+os.path.join(BASE_DIR, "config", "D:\Ai-agent-main\Ai-agent-main\config\continual-works-430510-v1-e672c0aea3c1.json")
+
 def schedule_event(summary, start_time):
     """
     Schedules an event in Google Calendar.
