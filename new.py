@@ -467,14 +467,21 @@ from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
-# Google Calendar API Setup
-# Google Calendar API Setup
+# Define BASE_DIR for local development
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "config", "gen-lang-client-0235091091-c6906a6ce022.json")
+
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
-# Load credentials properly
-os.path.join(BASE_DIR, "config", "D:\Ai-agent-main\Ai-agent-main\config\continual-works-430510-v1-e672c0aea3c1.json")
-
+# Check if running on Streamlit Cloud (no local files)
+if "google_service_account" in st.secrets:
+    # Load credentials from Streamlit secrets (for deployment)
+    creds_dict = st.secrets["google_service_account"]
+    CREDS = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+else:
+    # Load credentials from a local JSON file (for local development)
+    CREDS = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    
 def schedule_event(summary, start_time):
     """
     Schedules an event in Google Calendar.
@@ -816,7 +823,7 @@ def main():
     if user_input:
         # Store user message and display instantly
         st.session_state["messages"].append({"role": "user", "text": user_input})
-        st.session_state["chat_logs"].append(st.session_state["messages"].copy())
+        
        
 
       
@@ -824,11 +831,11 @@ def main():
         response = ""
 
 
-
+        event_time = None
         if user_input.lower().startswith("schedule this"):
          event_time = extract_time_from_message(user_input)
-         event_time = None
-            
+
+         
 
         if event_time:
             event_details = {
