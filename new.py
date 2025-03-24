@@ -827,7 +827,7 @@ def main():
 
         if user_input.lower().startswith("schedule this"):
          event_time = extract_time_from_message(user_input)
-            event_time = None
+         event_time = None
             
 
         if event_time:
