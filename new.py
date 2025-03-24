@@ -467,20 +467,20 @@ from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
-# Define BASE_DIR for local development
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "config", "gen-lang-client-0235091091-c6906a6ce022.json")
+import streamlit as st
+from google.oauth2.service_account import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
-# Check if running on Streamlit Cloud (no local files)
+# Check if running on Streamlit Cloud
 if "google_service_account" in st.secrets:
-    # Load credentials from Streamlit secrets (for deployment)
     creds_dict = st.secrets["google_service_account"]
     CREDS = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 else:
-    # Load credentials from a local JSON file (for local development)
+    # Local development (Use JSON file if available)
+    SERVICE_ACCOUNT_FILE = "config/continual-works-430510-v1-e672c0aea3c1.json"
     CREDS = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
     
 def schedule_event(summary, start_time):
     """
